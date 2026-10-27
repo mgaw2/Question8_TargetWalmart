@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Georgia Target and Walmart Stores</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+#map { height: 500px; }
+table { border-collapse: collapse; }
+th, td { border: 1px solid gray; padding: 6px; text-align: left; }
+</style>
+</head>
+<body>
+<h1>Georgia Target and Walmart Stores</h1>
+<p>Target and Walmart are direct competitors that offer similar products and serve overlapping customer groups. This map examines their store locations across the state of Georgia and explores their spatial relationship by identifying the nearest Walmart to each Target store.</p>
+<p><b>Target Stores:</b> The Target store dataset contains store names, location details, and coordinates. This map shows 51 Target store locations in the state of Georgia.</p>
+<p><b>Walmart Stores:</b> The Walmart store dataset contains store names, location details, and coordinates. This map shows 186 Walmart store locations in the state of Georgia.</p>
+<p><b>Data Source:</b> http://www.poi-factory.com/</p>
+<p>Red = Georgia Target. Blue = Georgia Walmart. Click a marker for details. Use the controls at the top right to change basemaps or turn store layers on and off.</p>
+<div id="map"></div>
+<h2>Analysis</h2>
+<p>For each Georgia Target store location, the map calculates the straight-line distance to every Walmart and selects the closest one. Distances are measured in kilometers using Leaflet's geographic distance method.</p>
+<p id="findings"></p>
+<table>
+<thead><tr><th>Georgia Target</th><th>Nearest Walmart</th><th>Distance (km)</th></tr></thead>
+<tbody id="results"></tbody>
+</table>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// JSON arrays created from the CSV datasets.
+const targetStores = [
+  {
+    "name": "Target-GA: Acworth - 3378 Cobb Pkwy NW; Acworth",
+    "state": "GA",
+    "details": "GA 30101>678-202-0996",
+    "lat": 34.036405,
+    "lon": -84.684921
+  },
+  {
+    "name": "Target-GA: Albany - 2721 Dawson Rd; Albany",
+    "state": "GA",
+    "details": "GA 31707>229-888-1333",
+    "lat": 31.620341,
+    "lon": -84.225607
+  },
+  {
+    "name": "Target-GA: Alpharetta - 6000 N Point Pkwy; Alpharetta",
+    "state": "GA",
+    "details": "GA 30022>770-664-5395",
+    "lat": 34.047649,
+    "lon": -84.288435
+  },
+  {
+    "name": "Target-GA: Athens - 127 E Broad St; Athens",
+    "state": "GA",
+    "details": "GA 30601>706-715-3851",
+    "lat": 33.957586,
+    "lon": -83.376264
+  },
+  {
+    "name": "Target-GA: Athens - 3065 Atlanta Hwy; Athens",
+    "state": "GA",
+    "details": "GA 30606>706-208-9379",
+    "lat": 33.943294,
+    "lon": -83.440954
+  },
+  {
+    "name": "Target-GA: Atlanta - 100 Perimeter Center Pl; Atlanta",
+    "state": "GA",
+    "details": "GA 30346>678-259-0888",
+    "lat": 33.928953,
+    "lon": -84.341136
+  },
+  {
+    "name": "Target-GA: Atlanta - 1275 Caroline St NE; Atlanta",
+    "state": "GA",
+    "details": "GA 30307>404-260-0200",
+    "lat": 33.756909,
+    "lon": -84.348941
+  },
+  {
+    "name": "Target-GA: Atlanta - 2400 N Druid Hills Rd NE; Atlanta",
+    "state": "GA",
+    "details": "GA 30329>404-267-0060",
+    "lat": 33.826886,
+    "lon": -84.325259
+  },
+  {
+    "name": "Target-GA: Atlanta - 2539 Piedmont Rd NE; Atlanta",
+    "state": "GA",
+    "details": "GA 30324>404-720-1081",
+    "lat": 33.825666,
+    "lon": -84.365811
+  },
+  {
+    "name": "Target-GA: Atlanta - 3535 Peachtree Rd NE; Atlanta",
+    "state": "GA",
+    "details": "GA 30326>404-237-9494",
+    "lat": 33.852131,
+    "lon": -84.358874
+  },
+  {
+    "name": "Target-GA: Atlanta - 375 18th St; Atlanta",
+    "state": "GA",
+    "details": "GA 30363>678-954-4265",
+    "lat": 33.793044,
+    "lon": -84.398604
+  },
+  {
+    "name": "Target-GA: Augusta - 235 Robert C Daniel Jr Pkwy; Augusta",
+    "state": "GA",
+    "details": "GA 30909>706-667-6368",
+    "lat": 33.489684,
+    "lon": -82.081306
+  },
+  {
+    "name": "Target-GA: Austell - 4125 Austell Rd; Austell",
+    "state": "GA",
+    "details": "GA 30106>678-945-4550",
+    "lat": 33.851832,
+    "lon": -84.605046
+  },
+  {
+    "name": "Target-GA: Bethlehem - 916 Loganville Hwy; Bethlehem",
+    "state": "GA",
+    "details": "GA 30620>678-975-3060",
+    "lat": 33.944117,
+    "lon": -83.756617
+  },
+  {
+    "name": "Target-GA: Brunswick - 200 Glynn Isle; Brunswick",
+    "state": "GA",
+    "details": "GA 31525>912-261-4868",
+    "lat": 31.203851,
+    "lon": -81.482914
+  },
+  {
+    "name": "Target-GA: Buford - 3205 Woodward Crossing Blvd; Buford",
+    "state": "GA",
+    "details": "GA 30519>678-482-2367",
+    "lat": 34.068875,
+    "lon": -83.983195
+  },
+  {
+    "name": "Target-GA: Canton - 2022 Cumming Hwy; Canton",
+    "state": "GA",
+    "details": "GA 30115>678-880-4311",
+    "lat": 34.237061,
+    "lon": -84.456232
+  },
+  {
+    "name": "Target-GA: Carrollton - 1129 S Park St; Carrollton",
+    "state": "GA",
+    "details": "GA 30117>770-838-9221",
+    "lat": 33.560385,
+    "lon": -85.073611
+  },
+  {
+    "name": "Target-GA: Cartersville - 100 Cherokee Pl; Cartersville",
+    "state": "GA",
+    "details": "GA 30121>770-387-9595",
+    "lat": 34.171011,
+    "lon": -84.783626
+  },
+  {
+    "name": "Target-GA: Columbus - 1591 Bradley Park Dr; Columbus",
+    "state": "GA",
+    "details": "GA 31904>706-321-0831",
+    "lat": 32.533759,
+    "lon": -84.968887
+  },
+  {
+    "name": "Target-GA: Conyers - 2195 GA-20 SE; Conyers",
+    "state": "GA",
+    "details": "GA 30013>770-785-6470",
+    "lat": 33.633767,
+    "lon": -84.014624
+  },
+  {
+    "name": "Target-GA: Cumming - 1525 Market Place Blvd; Cumming",
+    "state": "GA",
+    "details": "GA 30041>678-455-9618",
+    "lat": 34.187103,
+    "lon": -84.133086
+  },
+  {
+    "name": "Target-GA: Douglasville - 2950 Chapel Hill Rd; Douglasville",
+    "state": "GA",
+    "details": "GA 30135>770-947-5303",
+    "lat": 33.727326,
+    "lon": -84.736495
+  },
+  {
+    "name": "Target-GA: East Point - 3660 Marketplace Blvd; East Point",
+    "state": "GA",
+    "details": "GA 30344>404-267-0063",
+    "lat": 33.657538,
+    "lon": -84.501684
+  },
+  {
+    "name": "Target-GA: Evans - 4223 Washington Rd; Evans",
+    "state": "GA",
+    "details": "GA 30809>706-210-8591",
+    "lat": 33.525388,
+    "lon": -82.119956
+  },
+  {
+    "name": "Target-GA: Fayetteville - 107 Pavilion Pkwy; Fayetteville",
+    "state": "GA",
+    "details": "GA 30214>770-719-9766",
+    "lat": 33.480466,
+    "lon": -84.439161
+  },
+  {
+    "name": "Target-GA: Flowery Branch - 5865 Spout Springs Rd; Flowery Branch",
+    "state": "GA",
+    "details": "GA 30542>770-967-1205",
+    "lat": 34.177791,
+    "lon": -83.912061
+  },
+  {
+    "name": "Target-GA: Gainesville - 514 Shallowford Rd NW; Gainesville",
+    "state": "GA",
+    "details": "GA 30504>770-532-6670",
+    "lat": 34.290925,
+    "lon": -83.846851
+  },
+  {
+    "name": "Target-GA: Hiram - 5220 Jimmy Lee Smith Pkwy; Hiram",
+    "state": "GA",
+    "details": "GA 30141>678-567-0142",
+    "lat": 33.888216,
+    "lon": -84.745404
+  },
+  {
+    "name": "Target-GA: Johns Creek - 5950 State Bridge Rd; Johns Creek",
+    "state": "GA",
+    "details": "GA 30097>770-476-5548",
+    "lat": 34.016255,
+    "lon": -84.188058
+  },
+  {
+    "name": "Target-GA: Kennesaw - 740 Ernest W Barrett Pkwy NW; Kennesaw",
+    "state": "GA",
+    "details": "GA 30144>770-425-6895",
+    "lat": 34.010068,
+    "lon": -84.572497
+  },
+  {
+    "name": "Target-GA: Lawrenceville - 875 Lawrenceville Suwanee Rd; Lawrenceville",
+    "state": "GA",
+    "details": "GA 30043>770-338-4460",
+    "lat": 33.970544,
+    "lon": -84.018314
+  },
+  {
+    "name": "Target-GA: Marietta - 1401 Johnson Ferry Rd; Marietta",
+    "state": "GA",
+    "details": "GA 30062>770-240-0005",
+    "lat": 33.985605,
+    "lon": -84.427416
+  },
+  {
+    "name": "Target-GA: Marietta - 2535 Dallas Hwy SW; Marietta",
+    "state": "GA",
+    "details": "GA 30064>770-792-7933",
+    "lat": 33.946121,
+    "lon": -84.626796
+  },
+  {
+    "name": "Target-GA: Marietta - 3040 Shallowford Rd; Marietta",
+    "state": "GA",
+    "details": "GA 30062>770-321-8545",
+    "lat": 34.036768,
+    "lon": -84.459909
+  },
+  {
+    "name": "Target-GA: Mcdonough - 1850 Jonesboro Rd; Mcdonough",
+    "state": "GA",
+    "details": "GA 30253>678-583-2184",
+    "lat": 33.463756,
+    "lon": -84.213637
+  },
+  {
+    "name": "Target-GA: Milton - 13055 GA-9 N; Milton",
+    "state": "GA",
+    "details": "GA 30004>770-225-1780",
+    "lat": 34.099957,
+    "lon": -84.270695
+  },
+  {
+    "name": "Target-GA: Newnan - 555 Bullsboro Dr; Newnan",
+    "state": "GA",
+    "details": "GA 30265>770-502-0294",
+    "lat": 33.396258,
+    "lon": -84.758625
+  },
+  {
+    "name": "Target-GA: Peachtree City - 1209 Peachtree Pkwy N; Peachtree City",
+    "state": "GA",
+    "details": "GA 30269>770-282-2165",
+    "lat": 33.440821,
+    "lon": -84.588732
+  },
+  {
+    "name": "Target-GA: Peachtree Corners - 3200 Holcomb Bridge Rd; Peachtree Corners",
+    "state": "GA",
+    "details": "GA 30092>770-849-0885",
+    "lat": 33.949606,
+    "lon": -84.232845
+  },
+  {
+    "name": "Target-GA: Roswell - 1135 Woodstock Rd; Roswell",
+    "state": "GA",
+    "details": "GA 30075>770-998-0144",
+    "lat": 34.063665,
+    "lon": -84.399342
+  },
+  {
+    "name": "Target-GA: Sandy Springs - 5570 Roswell Rd; Sandy Springs",
+    "state": "GA",
+    "details": "GA 30342>678-704-8120",
+    "lat": 33.906885,
+    "lon": -84.378665
+  },
+  {
+    "name": "Target-GA: Savannah - 14065 Abercorn St; Savannah",
+    "state": "GA",
+    "details": "GA 31419>912-925-2667",
+    "lat": 31.982078,
+    "lon": -81.172993
+  },
+  {
+    "name": "Target-GA: Savannah - 1907 E Victory Dr; Savannah",
+    "state": "GA",
+    "details": "GA 31404>912-644-1600",
+    "lat": 32.042716,
+    "lon": -81.067594
+  },
+  {
+    "name": "Target-GA: Smyrna - 2201 Cobb Pkwy SE; Smyrna",
+    "state": "GA",
+    "details": "GA 30080>770-952-2241",
+    "lat": 33.896903,
+    "lon": -84.481551
+  },
+  {
+    "name": "Target-GA: Snellville - 1905 Scenic Hwy N; Snellville",
+    "state": "GA",
+    "details": "GA 30078>770-736-1113",
+    "lat": 33.873685,
+    "lon": -84.016137
+  },
+  {
+    "name": "Target-GA: Suwanee - 2625 Peachtree Pkwy; Suwanee",
+    "state": "GA",
+    "details": "GA 30024>678-513-8013",
+    "lat": 34.094007,
+    "lon": -84.173464
+  },
+  {
+    "name": "Target-GA: Tucker - 4241 Lavista Rd; Tucker",
+    "state": "GA",
+    "details": "GA 30084>770-270-5375",
+    "lat": 33.845111,
+    "lon": -84.244854
+  },
+  {
+    "name": "Target-GA: Valdosta - 1815 Norman Dr; Valdosta",
+    "state": "GA",
+    "details": "GA 31601>229-242-0330",
+    "lat": 30.843019,
+    "lon": -83.317891
+  },
+  {
+    "name": "Target-GA: Warner Robins - 2929 Watson Blvd; Warner Robins",
+    "state": "GA",
+    "details": "GA 31093>478-971-2141",
+    "lat": 32.618072,
+    "lon": -83.686129
+  },
+  {
+    "name": "Target-GA: Woodstock - 140 Woodstock Square Ave; Woodstock",
+    "state": "GA",
+    "details": "GA 30189>678-494-5307",
+    "lat": 34.084521,
+    "lon": -84.544018
+  }
+];
+const walmartStores = [
+  {
+    "name": "Walmart SC-Acworth,GA",
+    "state": "GA",
+    "details": "3105 Cobb Pkwy NW, Acworth,GA 30152, (770) 974-9291|Store #3471|Gas/Diesel",
+    "lat": 34.030193,
+    "lon": -84.65899
+  },
+  {
+    "name": "Walmart SC-Acworth,GA",
+    "state": "GA",
+    "details": "3826 Cobb Pkwy NW, Acworth,GA 30101, (770) 966-1226|Store #3748|(NOP)",
+    "lat": 34.047907,
+    "lon": -84.697421
+  },
+  {
+    "name": "Walmart SC-Adel,GA",
+    "state": "GA",
+    "details": "351 Alabama Rd/I-75 Exit 39, Adel,GA 31620, (229) 896-9980|Store #7194",
+    "lat": 31.133248,
+    "lon": -83.439148
+  },
+  {
+    "name": "Walmart SC-Albany,GA",
+    "state": "GA",
+    "details": "262 Cordele Rd, Albany,GA 31705, (229) 352-9332|Store #5797|Gas/Diesel",
+    "lat": 31.57859,
+    "lon": -84.08748
+  },
+  {
+    "name": "Walmart SC-Albany,GA",
+    "state": "GA",
+    "details": "2825 Ledo Rd, Albany,GA 31707, (229) 889-9655|Store #0588|Gas/Diesel",
+    "lat": 31.624218,
+    "lon": -84.213729
+  },
+  {
+    "name": "Walmart SC-Alpharetta,GA",
+    "state": "GA",
+    "details": "5200 Windward Pkwy, Alpharetta,GA 30004, (770) 772-9033|Store #2941",
+    "lat": 34.093812,
+    "lon": -84.275332
+  },
+  {
+    "name": "Walmart SC-Alpharetta,GA",
+    "state": "GA",
+    "details": "5455 Atlanta Hwy, Alpharetta,GA 30004, (770) 475-4101|Store #4436|Gas/Diesel",
+    "lat": 34.15184,
+    "lon": -84.2517
+  },
+  {
+    "name": "Walmart SC-Americus,GA",
+    "state": "GA",
+    "details": "1711 E Larmar St, Americus,GA 31709, (229) 928-0653|Store #0758|Gas/Diesel",
+    "lat": 32.060531,
+    "lon": -84.200489
+  },
+  {
+    "name": "Walmart SC-Athens,GA",
+    "state": "GA",
+    "details": "1911 Epps Bridge Pkwy, Athens,GA 30606, (706) 549-1423|Store #1400|Gas/Diesel",
+    "lat": 33.919285,
+    "lon": -83.444442
+  },
+  {
+    "name": "Walmart SC-Athens,GA",
+    "state": "GA",
+    "details": "4375 Lexington Rd, Athens,GA 30605, (706) 355-3966|Store #2811|Gas/Diesel",
+    "lat": 33.933503,
+    "lon": -83.309447
+  },
+  {
+    "name": "Walmart SC-Atlanta,GA",
+    "state": "GA",
+    "details": "1105 Research Center/I-285 Exit 7, Atlanta,GA 30331, (404) 260-6153|Store #3741|(NOP)",
+    "lat": 33.727608,
+    "lon": -84.50677
+  },
+  {
+    "name": "Walmart SC-Atlanta,GA",
+    "state": "GA",
+    "details": "2427 Gresham Rd Se/I-20 Exit 63, Atlanta,GA 30316, (404) 244-3034|Store #3709|(NOP)",
+    "lat": 33.718828,
+    "lon": -84.311831
+  },
+  {
+    "name": "Walmart SC-Augusta,GA",
+    "state": "GA",
+    "details": "260 Bobby Jones Expy/I-20 Exit 196, Augusta,GA 30907, (706) 860-0170|Store #1227|Gas/Diesel",
+    "lat": 33.504613,
+    "lon": -82.086864
+  },
+  {
+    "name": "Walmart SC-Augusta,GA",
+    "state": "GA",
+    "details": "3209 Deans Bridge Rd, Augusta,GA 30906, (706) 792-9323|Store #1293|(NOP)",
+    "lat": 33.423681,
+    "lon": -82.063261
+  },
+  {
+    "name": "Walmart SC-Augusta,GA",
+    "state": "GA",
+    "details": "3338 Wrightsboro Rd, Augusta,GA 30909, (706) 941-5317|Store #4144|Gas/Diesel",
+    "lat": 33.467354,
+    "lon": -82.070499
+  },
+  {
+    "name": "Walmart SC-Austell,GA",
+    "state": "GA",
+    "details": "1133 E W Connector, Austell,GA 30106, (770) 863-9300|Store #1586|(NOP)",
+    "lat": 33.8567,
+    "lon": -84.5858
+  },
+  {
+    "name": "Walmart SC-Bainbridge,GA",
+    "state": "GA",
+    "details": "500 E Alice St, Bainbridge,GA 39819, (229) 246-2404|Store #5422|Gas/Diesel",
+    "lat": 30.889896,
+    "lon": -84.569963
+  },
+  {
+    "name": "Walmart SC-Baxley,GA",
+    "state": "GA",
+    "details": "980 W Parker St, Baxley,GA 31513, (912) 367-3117|Store #5392|Gas/Diesel",
+    "lat": 31.785348,
+    "lon": -82.365034
+  },
+  {
+    "name": "Walmart SC-Blairsville,GA",
+    "state": "GA",
+    "details": "2257 Hwy 515, Blairsville,GA 30512, (706) 835-2881|Store #3485|Gas/Diesel",
+    "lat": 34.863511,
+    "lon": -83.998933
+  },
+  {
+    "name": "Walmart SC-Blue Ridge,GA",
+    "state": "GA",
+    "details": "97 Commerce Dr, Blue Ridge,GA 30513, (706) 632-9500|Store #5812|Gas/Diesel",
+    "lat": 34.878551,
+    "lon": -84.324946
+  },
+  {
+    "name": "Walmart SC-Bremen,GA",
+    "state": "GA",
+    "details": "404 Hwy 27 N, Bremen,GA 30110, (770) 537-5531|Store #0856|Gas/Diesel",
+    "lat": 33.708362,
+    "lon": -85.16253
+  },
+  {
+    "name": "Walmart SC-Brunswick,GA",
+    "state": "GA",
+    "details": "150 Altama Connector, Brunswick,GA 31525, (912) 261-1616|Store #0639|Gas/Diesel",
+    "lat": 31.213437,
+    "lon": -81.485797
+  },
+  {
+    "name": "Walmart SC-Buford,GA",
+    "state": "GA",
+    "details": "3250 Sardis Church Rd/-85 Exit 120, Buford,GA 30519, (678) 546-6464|Store #3786|Gas/Diesel",
+    "lat": 34.077988,
+    "lon": -83.92101
+  },
+  {
+    "name": "Walmart SC-Buford,GA",
+    "state": "GA",
+    "details": "3795 Buford Dr/I-85 Exit 115, Buford,GA 30519, (770) 271-8210|Store #1314|Gas/Diesel",
+    "lat": 34.088174,
+    "lon": -83.99028
+  },
+  {
+    "name": "Walmart SC-Cairo,GA",
+    "state": "GA",
+    "details": "361 8th Ave NE, Cairo,GA 39828, (229) 377-1394|Store #0858|Gas/Diesel",
+    "lat": 30.886492,
+    "lon": -84.203576
+  },
+  {
+    "name": "Walmart SC-Calhoun,GA",
+    "state": "GA",
+    "details": "450 W Belmont Dr/I-75 Exit 312, Calhoun,GA 30701, (706) 625-4274|Store #1215|Gas",
+    "lat": 34.480204,
+    "lon": -84.945345
+  },
+  {
+    "name": "Walmart SC-Camilla,GA",
+    "state": "GA",
+    "details": "165 Hwy 19 S, Camilla,GA 31730, (229) 336-0920|Store #0843",
+    "lat": 31.226516,
+    "lon": -84.199696
+  },
+  {
+    "name": "Walmart SC-Canton,GA",
+    "state": "GA",
+    "details": "1550 Riverstone Pwky/I-575 Exit 20, Canton,GA 30114, (770) 479-9891|Store #0518|Gas/Diesel",
+    "lat": 34.255894,
+    "lon": -84.461982
+  },
+  {
+    "name": "Walmart SC-Carrollton,GA",
+    "state": "GA",
+    "details": "1735 S Hwy 27, Carrollton,GA 30117, (770) 834-3513|Store #0722|Gas/Diesel",
+    "lat": 33.542816,
+    "lon": -85.076
+  },
+  {
+    "name": "Walmart SC-Cartersville,GA",
+    "state": "GA",
+    "details": "101 Market Place Blvd/I-75 Exit 290, Cartersville,GA 30121, (770) 382-0182|Store #0615|Gas",
+    "lat": 34.202688,
+    "lon": -84.788479
+  },
+  {
+    "name": "Walmart SC-Cedartown,GA",
+    "state": "GA",
+    "details": "1585 Rome Hwy, Cedartown,GA 30125, (770) 748-1636|Store #0727|Gas/Diesel",
+    "lat": 34.046125,
+    "lon": -85.23868
+  },
+  {
+    "name": "Walmart SC-Chamblee,GA",
+    "state": "GA",
+    "details": "1871 Chamblee Tucker Rd, Chamblee,GA 30341, (770) 455-0422|Store #3621",
+    "lat": 33.888915,
+    "lon": -84.310546
+  },
+  {
+    "name": "Walmart SC-Clayton,GA",
+    "state": "GA",
+    "details": "1455 Hwy 441 S, Clayton,GA 30525, (706) 782-3039|Store #2753",
+    "lat": 34.859203,
+    "lon": -83.405015
+  },
+  {
+    "name": "Walmart SC-Cleveland,GA",
+    "state": "GA",
+    "details": "260 Donald E Thurmond Pkwy, Cleveland,GA 30528, (706) 219-2304|Store #4616|Gas/Diesel",
+    "lat": 34.57791,
+    "lon": -83.76052
+  },
+  {
+    "name": "Walmart SC-Cochran,GA",
+    "state": "GA",
+    "details": "366 Hwy 26 E, Cochran,GA 31014, (478) 934-4919|Store #7246|(NOP)",
+    "lat": 32.399585,
+    "lon": -83.337246
+  },
+  {
+    "name": "Walmart SC-College Park,GA",
+    "state": "GA",
+    "details": "6149 Old National Hwy, College Park,GA 30349, (770) 994-9440|Store #3401|Gas/Diesel",
+    "lat": 33.586844,
+    "lon": -84.470982
+  },
+  {
+    "name": "Walmart SC-Columbus,GA",
+    "state": "GA",
+    "details": "2801 Airport Thruway/I-185 Exit 8, Columbus,GA 31909, (706) 653-4227|Store #4283|(NOP)",
+    "lat": 32.521487,
+    "lon": -84.948864
+  },
+  {
+    "name": "Walmart SC-Columbus,GA",
+    "state": "GA",
+    "details": "3515 Victory Dr, Columbus,GA 31903, (706) 568-3222|Store #1338|Gas",
+    "lat": 32.422361,
+    "lon": -84.945798
+  },
+  {
+    "name": "Walmart SC-Columbus,GA",
+    "state": "GA",
+    "details": "5448 B Whittlesey Blvd, Columbus,GA 31909, (706) 322-8801|Store #1311",
+    "lat": 32.541702,
+    "lon": -84.946052
+  },
+  {
+    "name": "Walmart SC-Columbus,GA",
+    "state": "GA",
+    "details": "6475 Gateway Rd, Columbus,GA 31909, (706) 563-5979|Store #4200|Gas/Diesel",
+    "lat": 32.537565,
+    "lon": -84.876785
+  },
+  {
+    "name": "Walmart SC-Commerce,GA",
+    "state": "GA",
+    "details": "30983 Hwy 441 S/I-85 Exit 149, Commerce,GA 30529, (812) 346-5100|Store #0003|Gas",
+    "lat": 34.247368,
+    "lon": -83.457396
+  },
+  {
+    "name": "Walmart SC-Conyers,GA",
+    "state": "GA",
+    "details": "1436 Dogwood Dr SE/I-20 Exit 82, Conyers,GA 30013, (770) 860-8544|Store #2475|(NOP)",
+    "lat": 33.652405,
+    "lon": -83.997499
+  },
+  {
+    "name": "Walmart SC-Cordele,GA",
+    "state": "GA",
+    "details": "1215 E 16th Ave/I-75 Exit 101, Cordele,GA 31015, (229) 273-9270|Store #1006|(NOP)",
+    "lat": 31.963948,
+    "lon": -83.761813
+  },
+  {
+    "name": "Walmart SC-Cornelia,GA",
+    "state": "GA",
+    "details": "250 Furniture Dr, Cornelia,GA 30531, (706) 776-3060|Store #1403|Gas/Diesel",
+    "lat": 34.537377,
+    "lon": -83.534657
+  },
+  {
+    "name": "Walmart SC-Covington,GA",
+    "state": "GA",
+    "details": "10300 Industrial Blvd/I-20 Exit 93, Covington,GA 30015, (770) 787-8030|Store #0459|(NOP)",
+    "lat": 33.61123,
+    "lon": -83.82934
+  },
+  {
+    "name": "Walmart SC-Covington,GA",
+    "state": "GA",
+    "details": "4200 Salem Rd, Covington,GA 30016, (678) 212-3195|Store #4558|Gas/Diesel",
+    "lat": 33.577048,
+    "lon": -83.959945
+  },
+  {
+    "name": "Walmart SC-Cumming,GA",
+    "state": "GA",
+    "details": "1500 Market Place Blvd, Cumming,GA 30040, (770) 889-3436|Store #0878|(NOP)",
+    "lat": 34.18293,
+    "lon": -84.13125
+  },
+  {
+    "name": "Walmart SC-Cumming,GA",
+    "state": "GA",
+    "details": "2395 Peachtree Pkwy, Cumming,GA 30041, (770) 406-5165|Store #4185",
+    "lat": 34.100554,
+    "lon": -84.17606
+  },
+  {
+    "name": "Walmart SC-Cumming,GA",
+    "state": "GA",
+    "details": "3655 Browns Bridge Rd, Cumming,GA 30028, (770) 203-4860|Store #7185|Gas",
+    "lat": 34.266571,
+    "lon": -84.090689
+  },
+  {
+    "name": "Walmart SC-Dahlonega,GA",
+    "state": "GA",
+    "details": "270 Wal Mart Way, Dahlonega,GA 30533, (706) 867-6912|Store #2513|(NOP)",
+    "lat": 34.538587,
+    "lon": -83.973178
+  },
+  {
+    "name": "Walmart SC-Dallas,GA",
+    "state": "GA",
+    "details": "3615 Marietta Hwy, Dallas,GA 30157, (770) 445-2141|Store #3403|Gas/Diesel",
+    "lat": 33.934717,
+    "lon": -84.730389
+  },
+  {
+    "name": "Walmart SC-Dalton,GA",
+    "state": "GA",
+    "details": "2545 E Walnut Ave, Dalton,GA 30721, (706) 279-1905|Store #0669|(NOP)",
+    "lat": 34.76687,
+    "lon": -84.929988
+  },
+  {
+    "name": "Walmart SC-Dalton,GA",
+    "state": "GA",
+    "details": "815 Shugart Rd/I-75 Exit 336, Dalton,GA 30720, (706) 281-2855|Store #5173|Gas/Diesel|(NOP)",
+    "lat": 34.787647,
+    "lon": -84.99895
+  },
+  {
+    "name": "Walmart SC-Dawsonville,GA",
+    "state": "GA",
+    "details": "98 Power Center Dr, Dawsonville,GA 30534, (706) 265-8787|Store #3874",
+    "lat": 34.356132,
+    "lon": -84.043894
+  },
+  {
+    "name": "Walmart SC-Decatur,GA",
+    "state": "GA",
+    "details": "2525 N Decatur Rd, Decatur,GA 30033, (404) 464-4480|Store #3118|(NOP)",
+    "lat": 33.793062,
+    "lon": -84.289311
+  },
+  {
+    "name": "Walmart SC-Decatur,GA",
+    "state": "GA",
+    "details": "3580 Memorial Dr, Decatur,GA 30032, (404) 284-0500|Store #3710|(NOP)",
+    "lat": 33.757244,
+    "lon": -84.268089
+  },
+  {
+    "name": "Walmart SC-Douglas,GA",
+    "state": "GA",
+    "details": "1450 Bowens Mill Rd SE, Douglas,GA 31533, (912) 384-4600|Store #0593|Gas",
+    "lat": 31.485836,
+    "lon": -82.848229
+  },
+  {
+    "name": "Walmart SC-Douglasville,GA",
+    "state": "GA",
+    "details": "7001 Concour Pkwy/I-20 Exit 34, Douglasville,GA 30134, (770) 489-7057|Store #1488|(NOP)",
+    "lat": 33.732244,
+    "lon": -84.757459
+  },
+  {
+    "name": "Walmart SC-Dublin,GA",
+    "state": "GA",
+    "details": "2423 Hwy 80 W, Dublin,GA 31021, (478) 272-7017|Store #0555|Gas/Diesel",
+    "lat": 32.550481,
+    "lon": -82.971343
+  },
+  {
+    "name": "Walmart SC-Duluth,GA",
+    "state": "GA",
+    "details": "2635 Pleasant Hill Rd, Duluth,GA 30096, (770) 418-0162|Store #2154|Gas/Diesel",
+    "lat": 33.970668,
+    "lon": -84.149474
+  },
+  {
+    "name": "Walmart SC-East Ellijay,GA",
+    "state": "GA",
+    "details": "88 Highland Crossing, East Ellijay,GA 30540, (706) 276-1170|Store #1070|Gas/Diesel",
+    "lat": 34.656635,
+    "lon": -84.48893
+  },
+  {
+    "name": "Walmart SC-East Point,GA",
+    "state": "GA",
+    "details": "844 Cleveland Ave/I-85 Exit 76, East Point,GA 30344, (404) 460-6177|Store #6998|(NOP)",
+    "lat": 33.681346,
+    "lon": -84.417388
+  },
+  {
+    "name": "Walmart SC-Eastman,GA",
+    "state": "GA",
+    "details": "1099 Indian Dr, Eastman,GA 31023, (478) 374-7782|Store #1018|Gas/Diesel",
+    "lat": 32.178912,
+    "lon": -83.17789
+  },
+  {
+    "name": "Walmart SC-Eatonton,GA",
+    "state": "GA",
+    "details": "201 Walmart Dr, Eatonton,GA 31024, (706) 485-5052|Store #5482|Gas/Diesel",
+    "lat": 33.295957,
+    "lon": -83.388056
+  },
+  {
+    "name": "Walmart SC-Ellenwood,GA",
+    "state": "GA",
+    "details": "2940 Anvil Block Rd/I-675 Exit 7, Ellenwood,GA 30294, (404) 361-6811|Store #3609|Gas/Diesel",
+    "lat": 33.635338,
+    "lon": -84.292897
+  },
+  {
+    "name": "Walmart SC-Evans,GA",
+    "state": "GA",
+    "details": "4469 Washington Rd, Evans,GA 30809, (706) 854-9892|Store #3570|Gas/Diesel",
+    "lat": 33.545321,
+    "lon": -82.141379
+  },
+  {
+    "name": "Walmart SC-Fayetteville,GA",
+    "state": "GA",
+    "details": "125 Pavillion Pkwy, Fayetteville,GA 30214, (770) 460-0947|Store #0594",
+    "lat": 33.480648,
+    "lon": -84.442504
+  },
+  {
+    "name": "Walmart SC-Fitzgerald,GA",
+    "state": "GA",
+    "details": "120 Benjamin H Hill Dr W, Fitzgerald,GA 31750, (229) 423-4353|Store #0686|Gas/Diesel",
+    "lat": 31.690774,
+    "lon": -83.248206
+  },
+  {
+    "name": "Walmart SC-Forsyth,GA",
+    "state": "GA",
+    "details": "180 N Lee St/I-75 Exit 187, Forsyth,GA 31029, (478) 994-0163|Store #0907",
+    "lat": 33.041498,
+    "lon": -83.94258
+  },
+  {
+    "name": "Walmart SC-Fort Oglethorpe,GA",
+    "state": "GA",
+    "details": "3040 Battlefield Pkwy, Fort Oglethorpe,GA 30742, (706) 861-4698|Store #1458|Gas",
+    "lat": 34.937377,
+    "lon": -85.215729
+  },
+  {
+    "name": "Walmart SC-Gainesville,GA",
+    "state": "GA",
+    "details": "400 Shallowford Rd, Gainesville,GA 30504, (770) 503-9300|Store #0510|Gas/Diesel",
+    "lat": 34.2928,
+    "lon": -83.84777
+  },
+  {
+    "name": "Walmart SC-Griffin,GA",
+    "state": "GA",
+    "details": "1569 N Expy, Griffin,GA 30223, (770) 229-5040|Store #0932|Gas/Diesel",
+    "lat": 33.272415,
+    "lon": -84.295224
+  },
+  {
+    "name": "Walmart SC-Grovetown,GA",
+    "state": "GA",
+    "details": "5010 Steiner Way/I-20 Exit 190, Grovetown,GA 30813, (706) 860-8883|Store #5735|Gas/Diesel",
+    "lat": 33.480845,
+    "lon": -82.19568
+  },
+  {
+    "name": "Walmart SC-Hartwell,GA",
+    "state": "GA",
+    "details": "1572 Anderson Hwy, Hartwell,GA 30643, (706) 376-5400|Store #1111|Gas/Diesel",
+    "lat": 34.350397,
+    "lon": -82.904354
+  },
+  {
+    "name": "Walmart SC-Hazlehurst,GA",
+    "state": "GA",
+    "details": "136 E Jarman St, Hazlehurst,GA 31539, (912) 375-3627|Store #1061|Gas/Diesel",
+    "lat": 31.862794,
+    "lon": -82.586041
+  },
+  {
+    "name": "Walmart SC-Hinesville,GA",
+    "state": "GA",
+    "details": "751 W Oglethorpe Hwy, Hinesville,GA 31313, (912) 369-3600|Store #0862",
+    "lat": 31.826027,
+    "lon": -81.600491
+  },
+  {
+    "name": "Walmart SC-Hiram,GA",
+    "state": "GA",
+    "details": "4166 Jimmy Lee Smith Pkwy, Hiram,GA 30141, (770) 439-1028|Store #0618",
+    "lat": 33.89181,
+    "lon": -84.75741
+  },
+  {
+    "name": "Walmart SC-Holly Springs,GA",
+    "state": "GA",
+    "details": "2200 Holly Springs Pkwy/I-575 Exit 14, Holly Springs,GA 30115, (770) 213-6519|Store #5814|(NOP)",
+    "lat": 34.181813,
+    "lon": -84.504404
+  },
+  {
+    "name": "Walmart SC-Jasper,GA",
+    "state": "GA",
+    "details": "1100 Old Philadelphia Rd, Jasper,GA 30143, (706) 301-5696|Store #5786|Gas/Diesel",
+    "lat": 34.476287,
+    "lon": -84.461824
+  },
+  {
+    "name": "Walmart SC-Jesup,GA",
+    "state": "GA",
+    "details": "1100 N 1st St, Jesup,GA 31546, (912) 530-6335|Store #2630|Gas",
+    "lat": 31.616538,
+    "lon": -81.87251
+  },
+  {
+    "name": "Walmart SC-La Fayette,GA",
+    "state": "GA",
+    "details": "2625 N Hwy 27, La Fayette,GA 30728, (706) 639-4900|Store #2988|Gas",
+    "lat": 34.745949,
+    "lon": -85.272486
+  },
+  {
+    "name": "Walmart SC-Lagrange,GA",
+    "state": "GA",
+    "details": "803 New Franklin Rd, Lagrange,GA 30240, (706) 812-0225|Store #0614|(NOP)",
+    "lat": 33.059867,
+    "lon": -85.030024
+  },
+  {
+    "name": "Walmart SC-Lawrenceville,GA",
+    "state": "GA",
+    "details": "1400 Lawrenceville Hwy, Lawrenceville,GA 30044, (770) 682-1992|Store #3388|Gas/Diesel",
+    "lat": 33.936426,
+    "lon": -84.026225
+  },
+  {
+    "name": "Walmart SC-Lawrenceville,GA",
+    "state": "GA",
+    "details": "630 Collins Hill Rd, Lawrenceville,GA 30045, (770) 995-0102|Store #0548|(NOP)",
+    "lat": 33.972095,
+    "lon": -83.996745
+  },
+  {
+    "name": "Walmart SC-Lilburn,GA",
+    "state": "GA",
+    "details": "4004 Lawrenceville Hwy NW, Lilburn,GA 30047, (770) 921-9224|Store #1373|Gas/Diesel",
+    "lat": 33.903605,
+    "lon": -84.110963
+  },
+  {
+    "name": "Walmart SC-Lithia Springs,GA",
+    "state": "GA",
+    "details": "1100 Thornton Rd/I-20 Exit 44, Lithia Springs,GA 30122, (770) 819-1123|Store #3205|Gas/Diesel",
+    "lat": 33.77362,
+    "lon": -84.60302
+  },
+  {
+    "name": "Walmart SC-Lithonia,GA",
+    "state": "GA",
+    "details": "5401 Fairington Rd/I-20 Exit 71, Lithonia,GA 30038, (770) 593-3540|Store #1340|Gas/Diesel",
+    "lat": 33.701298,
+    "lon": -84.167617
+  },
+  {
+    "name": "Walmart SC-Lithonia,GA",
+    "state": "GA",
+    "details": "8424 Mall Pkwy, Lithonia,GA 30038, (770) 225-0428|Store #4472|(NOP)",
+    "lat": 33.696287,
+    "lon": -84.084534
+  },
+  {
+    "name": "Walmart SC-Locust Grove,GA",
+    "state": "GA",
+    "details": "4949 Bill Gardner Pkwy/I-75 Exit 212, Locust Grove,GA 30248, (678) 734-3395|Store #5709|Gas/Diesel",
+    "lat": 33.357762,
+    "lon": -84.120028
+  },
+  {
+    "name": "Walmart SC-Loganville,GA",
+    "state": "GA",
+    "details": "4221 Atlanta Hwy, Loganville,GA 30052, (770) 554-7481|Store #5252|Gas/Diesel",
+    "lat": 33.8411331,
+    "lon": -83.910062
+  },
+  {
+    "name": "Walmart SC-Lovejoy,GA",
+    "state": "GA",
+    "details": "11465 Tara Blvd, Lovejoy,GA 30250, (770) 471-4451|Store #5363|Gas/Diesel",
+    "lat": 33.442948,
+    "lon": -84.324674
+  },
+  {
+    "name": "Walmart SC-Macon,GA",
+    "state": "GA",
+    "details": "1401 Gray Hwy/I-16 Exit 1, Macon,GA 31201, (478) 745-3999|Store #1076|Gas/Diesel",
+    "lat": 32.864038,
+    "lon": -83.610907
+  },
+  {
+    "name": "Walmart SC-Macon,GA",
+    "state": "GA",
+    "details": "5955 Zebulon Rd/I-475 Exit 9, Macon,GA 31201, (478) 471-9150|Store #2890|Gas/Diesel",
+    "lat": 32.881921,
+    "lon": -83.759961
+  },
+  {
+    "name": "Walmart SC-Macon,GA",
+    "state": "GA",
+    "details": "6020 Harrison Rd/I-475 Exit 3, Macon,GA 31206, (478) 781-0086|Store #1153|Gas/Diesel",
+    "lat": 32.80919,
+    "lon": -83.718832
+  },
+  {
+    "name": "Walmart SC-Madison,GA",
+    "state": "GA",
+    "details": "1681 Eatonton Rd/I-20 Exit 114, Madison,GA 30650, (706) 342-9988|Store #1363",
+    "lat": 33.564737,
+    "lon": -83.479852
+  },
+  {
+    "name": "Walmart SC-Marietta,GA",
+    "state": "GA",
+    "details": "1785 Cobb Pkwy S, Marietta,GA 30060, (770) 955-0626|Store #1181|Gas/Diesel",
+    "lat": 33.909275,
+    "lon": -84.489199
+  },
+  {
+    "name": "Walmart SC-Marietta,GA",
+    "state": "GA",
+    "details": "210 Cobb Pkwy S, Marietta,GA 30060, (770) 429-9029|Store #5390|(NOP)",
+    "lat": 33.946598,
+    "lon": -84.521448
+  },
+  {
+    "name": "Walmart SC-Marietta,GA",
+    "state": "GA",
+    "details": "2795 Chastain Meadows Pkwy, Marietta,GA 30066, (770) 427-4933|Store #0937|Gas/Diesel",
+    "lat": 34.019506,
+    "lon": -84.555853
+  },
+  {
+    "name": "Walmart SC-Marietta,GA",
+    "state": "GA",
+    "details": "3100 Johnson Ferry Rd, Marietta,GA 30062, (770) 640-7225|Store #1766|(NOP)",
+    "lat": 34.023315,
+    "lon": -84.42356
+  },
+  {
+    "name": "Walmart SC-Marietta,GA",
+    "state": "GA",
+    "details": "6520 Earnest Barrett Pkwy, Marietta,GA 30064, (770) 222-6666|Store #3611",
+    "lat": 33.86749,
+    "lon": -84.634
+  },
+  {
+    "name": "Walmart SC-Mcdonough,GA",
+    "state": "GA",
+    "details": "135 Willow Lane/I-75 Exit 218, Mcdonough,GA 30253, (678) 432-2023|Store #3201|Gas/Diesel",
+    "lat": 33.432084,
+    "lon": -84.184687
+  },
+  {
+    "name": "Walmart SC-Milledgeville,GA",
+    "state": "GA",
+    "details": "2592 N Columbia St, Milledgeville,GA 31061, (478) 453-0667|Store #1121|Gas/Diesel",
+    "lat": 33.117122,
+    "lon": -83.264401
+  },
+  {
+    "name": "Walmart SC-Monroe,GA",
+    "state": "GA",
+    "details": "2050 W Spring St, Monroe,GA 30655, (770) 267-4527|Store #0780|Gas/Diesel",
+    "lat": 33.797494,
+    "lon": -83.742732
+  },
+  {
+    "name": "Walmart SC-Morrow,GA",
+    "state": "GA",
+    "details": "6065 Jonesboro Rd/I-75 Exit 233, Morrow,GA 30260, (770) 968-0774|Store #1047|Gas/Diesel",
+    "lat": 33.589608,
+    "lon": -84.339208
+  },
+  {
+    "name": "Walmart SC-Moultrie,GA",
+    "state": "GA",
+    "details": "641 Veterans Pkwy S, Moultrie,GA 31788, (229) 985-3697|Store #0952|Gas/Diesel",
+    "lat": 31.170437,
+    "lon": -83.759499
+  },
+  {
+    "name": "Walmart SC-Newnan,GA",
+    "state": "GA",
+    "details": "1025 Hwy 34 E/I-85 Exit 47, Newnan,GA 30265, (770) 502-0677|Store #0494",
+    "lat": 33.394357,
+    "lon": -84.744096
+  },
+  {
+    "name": "Walmart SC-Norcross,GA",
+    "state": "GA",
+    "details": "4975 Jimmy Carter Blvd, Norcross,GA 30093, (770) 225-9882|Store #3067|(NOP)",
+    "lat": 33.895031,
+    "lon": -84.195806
+  },
+  {
+    "name": "Walmart SC-Oakwood,GA",
+    "state": "GA",
+    "details": "3875 Mundy Mill Rd/I-985 Exit 16, Oakwood,GA 30566, (770) 535-6543|Store #3627",
+    "lat": 34.231819,
+    "lon": -83.873808
+  },
+  {
+    "name": "Walmart SC-Peachtree City,GA",
+    "state": "GA",
+    "details": "2717 Hwy 54, Peachtree City,GA 30269, (770) 632-8373|Store #3461|(NOP)",
+    "lat": 33.400303,
+    "lon": -84.599571
+  },
+  {
+    "name": "Walmart SC-Perry,GA",
+    "state": "GA",
+    "details": "1009 St Patricks Dr/I-75 Exit 136, Perry,GA 31069, (478) 987-1444|Store #2733|Gas/Diesel",
+    "lat": 32.471863,
+    "lon": -83.73981
+  },
+  {
+    "name": "Walmart SC-Pooler,GA",
+    "state": "GA",
+    "details": "160 Pooler Pkwy/I-95 Exit 104, Pooler,GA 31322, (912) 748-2677|Store #2860|Gas",
+    "lat": 32.143026,
+    "lon": -81.243766
+  },
+  {
+    "name": "Walmart SC-Rincon,GA",
+    "state": "GA",
+    "details": "434 S Columbia Ave, Rincon,GA 31326, (912) 826-4030|Store #1011|Gas/Diesel",
+    "lat": 32.273917,
+    "lon": -81.226442
+  },
+  {
+    "name": "Walmart SC-Riverdale,GA",
+    "state": "GA",
+    "details": "7050 Hwy 85, Riverdale,GA 30274, (770) 994-1670|Store #0787|(NOP)",
+    "lat": 33.562501,
+    "lon": -84.411223
+  },
+  {
+    "name": "Walmart SC-Rockmart,GA",
+    "state": "GA",
+    "details": "1801 Nathan Dean Bypass, Rockmart,GA 30153, (678) 757-8766|Store #4409",
+    "lat": 34.01329,
+    "lon": -85.037727
+  },
+  {
+    "name": "Walmart SC-Rome,GA",
+    "state": "GA",
+    "details": "2510 Redmond Cir, Rome,GA 30165, (706) 236-9595|Store #0658",
+    "lat": 34.274696,
+    "lon": -85.230427
+  },
+  {
+    "name": "Walmart SC-Rome,GA",
+    "state": "GA",
+    "details": "825 Cartersville Hwy SE, Rome,GA 30161, (706) 292-0838|Store #5151|Gas/Diesel",
+    "lat": 34.220342,
+    "lon": -85.130432
+  },
+  {
+    "name": "Walmart SC-Roswell,GA",
+    "state": "GA",
+    "details": "970 Mansell Rd, Roswell,GA 30076, (770) 993-0533|Store #1578|(NOP)",
+    "lat": 34.044265,
+    "lon": -84.333305
+  },
+  {
+    "name": "Walmart SC-Saint Marys,GA",
+    "state": "GA",
+    "details": "6586 Hwy 40 E, Saint Marys,GA 31558, (912) 510-9216|Store #0836|Gas/Diesel",
+    "lat": 30.778506,
+    "lon": -81.619678
+  },
+  {
+    "name": "Walmart SC-Sandersville,GA",
+    "state": "GA",
+    "details": "1308 S Harris St, Sandersville,GA 31082, (478) 552-1988|Store #1143|Gas/Diesel",
+    "lat": 32.954842,
+    "lon": -82.81048
+  },
+  {
+    "name": "Walmart SC-Savannah,GA",
+    "state": "GA",
+    "details": "14030 Abercorn St, Savannah,GA 31419, (912) 344-9664|Store #4556|Gas/Diesel",
+    "lat": 31.981284,
+    "lon": -81.174327
+  },
+  {
+    "name": "Walmart SC-Savannah,GA",
+    "state": "GA",
+    "details": "1955 E Montgomery Cross Rd, Savannah,GA 31406, (912) 354-0335|Store #0605|(NOP)",
+    "lat": 31.987331,
+    "lon": -81.082311
+  },
+  {
+    "name": "Walmart SC-Savannah,GA",
+    "state": "GA",
+    "details": "6000 Ogeechee Rd/I-95 Exit 94, Savannah,GA 31419, (912) 921-0882|Store #0635|Gas/Diesel",
+    "lat": 31.999697,
+    "lon": -81.257111
+  },
+  {
+    "name": "Walmart SC-Snellville,GA",
+    "state": "GA",
+    "details": "1550 Scenic Hwy N, Snellville,GA 30078, (770) 979-2447|Store #1720",
+    "lat": 33.886979,
+    "lon": -84.008525
+  },
+  {
+    "name": "Walmart SC-Snellville,GA",
+    "state": "GA",
+    "details": "3435 Centerville Hwy, Snellville,GA 30039, (770) 972-7572|Store #3389|Gas/Diesel",
+    "lat": 33.807183,
+    "lon": -84.046238
+  },
+  {
+    "name": "Walmart SC-Statesboro,GA",
+    "state": "GA",
+    "details": "147 Northside Dr E, Statesboro,GA 30458, (912) 489-1910|Store #0754|Gas/Diesel",
+    "lat": 32.435616,
+    "lon": -81.758959
+  },
+  {
+    "name": "Walmart SC-Stockbridge,GA",
+    "state": "GA",
+    "details": "1400 Hudson Bridge Rd/I-75 Exit 222, Stockbridge,GA 30281, (770) 474-0123|Store #3402|Gas/Diesel",
+    "lat": 33.506642,
+    "lon": -84.235122
+  },
+  {
+    "name": "Walmart SC-Stockbridge,GA",
+    "state": "GA",
+    "details": "5600 N Henry Blvd, Stockbridge,GA 30281, (770) 389-1709|Store #0745|Gas",
+    "lat": 33.553394,
+    "lon": -84.256487
+  },
+  {
+    "name": "Walmart SC-Stone Mountain,GA",
+    "state": "GA",
+    "details": "1825 Rockbridge Rd, Stone Mountain,GA 30087, (770) 469-8660|Store #1184|Gas/Diesel",
+    "lat": 33.82479,
+    "lon": -84.124732
+  },
+  {
+    "name": "Walmart SC-Stone Mountain,GA",
+    "state": "GA",
+    "details": "5935 Memorial Dr, Stone Mountain,GA 30083, (404) 260-6142|Store #3188|(NOP)",
+    "lat": 33.800317,
+    "lon": -84.195338
+  },
+  {
+    "name": "Walmart SC-Suwanee,GA",
+    "state": "GA",
+    "details": "3245 Lawrenceville-Suwanee Rd/I-85 Exit 113, Suwanee,GA 30024, (678) 482-5441|Store #3462|Gas/Diesel",
+    "lat": 34.037455,
+    "lon": -84.050659
+  },
+  {
+    "name": "Walmart SC-Swainsboro,GA",
+    "state": "GA",
+    "details": "414 S Main St, Swainsboro,GA 30401, (478) 237-3318|Store #1024|Gas/Diesel",
+    "lat": 32.588462,
+    "lon": -82.329242
+  },
+  {
+    "name": "Walmart SC-Sylvester,GA",
+    "state": "GA",
+    "details": "1102 E Franklin St, Sylvester,GA 31791, (229) 463-6004|Store #7245",
+    "lat": 31.52656,
+    "lon": -83.81044
+  },
+  {
+    "name": "Walmart SC-Thomaston,GA",
+    "state": "GA",
+    "details": "855 N Church St, Thomaston,GA 30286, (706) 648-2105|Store #1112|Gas/Diesel",
+    "lat": 32.912958,
+    "lon": -84.332921
+  },
+  {
+    "name": "Walmart SC-Thomasville,GA",
+    "state": "GA",
+    "details": "15328 Moultrie Rd, Thomasville,GA 31792, (229) 228-0144|Store #0889|Gas/Diesel",
+    "lat": 30.859954,
+    "lon": -83.94561
+  },
+  {
+    "name": "Walmart SC-Thomson,GA",
+    "state": "GA",
+    "details": "2205 Harrison Rd SE, Thomson,GA 30824, (706) 595-5530|Store #1658|Gas/Diesel",
+    "lat": 33.482353,
+    "lon": -82.500729
+  },
+  {
+    "name": "Walmart SC-Tifton,GA",
+    "state": "GA",
+    "details": "1830 Hwy 82 W/I-75 Exit 62, Tifton,GA 31794, (229) 386-0263|Store #1072|Gas/Diesel",
+    "lat": 31.443763,
+    "lon": -83.542799
+  },
+  {
+    "name": "Walmart SC-Toccoa,GA",
+    "state": "GA",
+    "details": "3886 Hwy 17 S, Toccoa,GA 30538, (706) 886-9775|Store #1122|Gas/Diesel",
+    "lat": 34.55022,
+    "lon": -83.28153
+  },
+  {
+    "name": "Walmart SC-Trion,GA",
+    "state": "GA",
+    "details": "13427 Hwy 27, Trion,GA 30753, (706) 734-2931|Store #0756|Gas/Diesel",
+    "lat": 34.521224,
+    "lon": -85.315573
+  },
+  {
+    "name": "Walmart SC-Tucker,GA",
+    "state": "GA",
+    "details": "4375 Lawrenceville Hwy, Tucker,GA 30084, (770) 939-2671|Store #2584",
+    "lat": 33.856552,
+    "lon": -84.205295
+  },
+  {
+    "name": "Walmart SC-Union City,GA",
+    "state": "GA",
+    "details": "4735 Jonesboro Rd/I-85 Exit 64, Union City,GA 30291, (770) 964-6921|Store #0855|(NOP)",
+    "lat": 33.572197,
+    "lon": -84.541692
+  },
+  {
+    "name": "Walmart SC-Valdosta,GA",
+    "state": "GA",
+    "details": "3274 Inner Perimeter Rd, Valdosta,GA 31602, (229) 253-0312|Store #2615|Gas/Diesel",
+    "lat": 30.881861,
+    "lon": -83.287649
+  },
+  {
+    "name": "Walmart SC-Valdosta,GA",
+    "state": "GA",
+    "details": "340 Norman Dr/I-75 Exit 18, Valdosta,GA 31601, (229) 249-8400|Store #0899|Gas/Diesel",
+    "lat": 30.8264443,
+    "lon": -83.318418
+  },
+  {
+    "name": "Walmart SC-Vidalia,GA",
+    "state": "GA",
+    "details": "3109 E 1st St, Vidalia,GA 30474, (912) 537-0889|Store #0864|Gas",
+    "lat": 32.203303,
+    "lon": -82.362032
+  },
+  {
+    "name": "Walmart SC-Villa Rica,GA",
+    "state": "GA",
+    "details": "600 Carrollton Villa Rica Hwy/I-20 Exit 24, Villa Rica,GA 30180, (770) 459-6601|Store #2732|(NOP)",
+    "lat": 33.719662,
+    "lon": -84.935738
+  },
+  {
+    "name": "Walmart SC-Warner Robins,GA",
+    "state": "GA",
+    "details": "2720 Watson Blvd, Warner Robins,GA 31093, (478) 953-7070|Store #1367|Gas/Diesel",
+    "lat": 32.619499,
+    "lon": -83.672122
+  },
+  {
+    "name": "Walmart SC-Warner Robins,GA",
+    "state": "GA",
+    "details": "502 Booth Rd, Warner Robins,GA 31088, (478) 918-0338|Store #3750|Gas/Diesel",
+    "lat": 32.591119,
+    "lon": -83.612336
+  },
+  {
+    "name": "Walmart SC-Waycross,GA",
+    "state": "GA",
+    "details": "2425 Memorial Dr, Waycross,GA 31501, (912) 283-9000|Store #0556|Gas/Diesel",
+    "lat": 31.197545,
+    "lon": -82.32204
+  },
+  {
+    "name": "Walmart SC-Waynesboro,GA",
+    "state": "GA",
+    "details": "1500 N Liberty St, Waynesboro,GA 30830, (706) 437-8380|Store #2754|Gas",
+    "lat": 33.106914,
+    "lon": -82.024356
+  },
+  {
+    "name": "Walmart SC-Winder,GA",
+    "state": "GA",
+    "details": "440 Atlanta Hwy NW, Winder,GA 30680, (770) 867-8642|Store #0520|Gas/Diesel",
+    "lat": 33.991334,
+    "lon": -83.757177
+  },
+  {
+    "name": "Walmart SC-Woodstock,GA",
+    "state": "GA",
+    "details": "12182 Hwy 92/I-575 Exit 7, Woodstock,GA 30188, (770) 516-4719|Store #0575|(NOP)",
+    "lat": 34.085102,
+    "lon": -84.481233
+  },
+  {
+    "name": "Walmart SC-Woodstock,GA",
+    "state": "GA",
+    "details": "6435 Bells Ferry Rd, Woodstock,GA 30189, (770) 926-2606|Store #5275",
+    "lat": 34.113345,
+    "lon": -84.583093
+  },
+  {
+    "name": "Walmart-Elberton,GA",
+    "state": "GA",
+    "details": "955 Elbert St, Elberton,GA 30635, (706) 283-8660|Store #1701",
+    "lat": 34.092113,
+    "lon": -82.845968
+  },
+  {
+    "name": "Walmart-Savannah,GA",
+    "state": "GA",
+    "details": "4725 E Hwy 80, Savannah,GA 31410, (912) 898-1391|Store #0606|(NOP)",
+    "lat": 32.042343,
+    "lon": -81.006392
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Albany,GA",
+    "state": "GA",
+    "details": "108 S Westover Blvd, Albany,GA 31707, (229) 405-6804|Store #2801|Gas",
+    "lat": 31.585205,
+    "lon": -84.218697
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Albany,GA",
+    "state": "GA",
+    "details": "2586 N Slappy Blvd, Albany,GA 31701, (229) 405-7032|Store #4517|Gas/Diesel",
+    "lat": 31.613087,
+    "lon": -84.174255
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Athens,GA",
+    "state": "GA",
+    "details": "3130 Atlanta Hwy, Athens,GA 30606, (706) 715-6238|Store #5267|Gas",
+    "lat": 33.943462,
+    "lon": -83.443855
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Atlanta,GA",
+    "state": "GA",
+    "details": "835 Martin Luther King Jr Dr NW, Atlanta,GA 30314, (404) 460-2703|Store #7601|Pharmacy",
+    "lat": 33.755499,
+    "lon": -84.413837
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Augusta,GA",
+    "state": "GA",
+    "details": "300 S Belair Rd/I-20 Exit 194, Augusta,GA 30907, (706) 941-5148|Store #4206|Gas",
+    "lat": 33.493543,
+    "lon": -82.136354
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Brunswick,GA",
+    "state": "GA",
+    "details": "11 Glynn Plaza/I-95 Exit 36, Brunswick,GA 31520, (912) 602-6145|Store #2840|Gas",
+    "lat": 31.192694,
+    "lon": -81.486702
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Columbus,GA",
+    "state": "GA",
+    "details": "1042 Manchester Expy, Columbus,GA 31904, (706) 330-5452|Store #4426|Gas",
+    "lat": 32.506321,
+    "lon": -84.977341
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Columbus,GA",
+    "state": "GA",
+    "details": "4909 Buena Vista Rd, Columbus,GA 31907, (706) 223-6914|Store #5907|(NOP)",
+    "lat": 32.467976,
+    "lon": -84.910301
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Columbus,GA",
+    "state": "GA",
+    "details": "7400 Blackmon Rd, Columbus,GA 31909, (706) 330-5213|Store #4421|Gas",
+    "lat": 32.552114,
+    "lon": -84.897764
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Dalton,GA",
+    "state": "GA",
+    "details": "98 W Walnut Ave/I-75 Exit 333, Dalton,GA 30720, (762) 209-5010|Store #4528|Gas",
+    "lat": 34.762314,
+    "lon": -84.969627
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Dunwoody,GA",
+    "state": "GA",
+    "details": "5025 Winters Chapel Rd, Dunwoody,GA 30360, (770) 280-0193|Store #3070|(NOP)",
+    "lat": 33.920008,
+    "lon": -84.270045
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Fort Oglethorpe,GA",
+    "state": "GA",
+    "details": "1155 Battlefield Pkwy, Fort Oglethorpe,GA 30742, (762) 887-6044|Store #3635|Gas",
+    "lat": 34.952566,
+    "lon": -85.245058
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Gainesville,GA",
+    "state": "GA",
+    "details": "1435 Thompson Bridge Rd, Gainesville,GA 30501, (678) 971-6384|Store #2699|Gas",
+    "lat": 34.321727,
+    "lon": -83.834411
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Gainesville,GA",
+    "state": "GA",
+    "details": "2892 Browns Bridge Rd, Gainesville,GA 30504, (678) 971-6367|Store #2731|Gas",
+    "lat": 34.279835,
+    "lon": -83.876449
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Grovetown,GA",
+    "state": "GA",
+    "details": "5303 Wrightsboro Rd, Grovetown,GA 30813, (762) 383-6528|Store #7339|Gas",
+    "lat": 33.453539,
+    "lon": -82.208147
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Hephzibah,GA",
+    "state": "GA",
+    "details": "3697 Windsor Spring Rd, Hephzibah,GA 30815, (706) 691-0575|Store #2465|Gas",
+    "lat": 33.378452,
+    "lon": -82.071035
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Hinesville,GA",
+    "state": "GA",
+    "details": "1422 W Oglethorpe Hwy, Hinesville,GA 31313, (912) 877-9810|Store #4525|Gas",
+    "lat": 31.796543,
+    "lon": -81.605782
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Hinesville,GA",
+    "state": "GA",
+    "details": "801 E General Stewart Way, Hinesville,GA 31313, (912) 255-6010|Store #4519|Gas",
+    "lat": 31.854719,
+    "lon": -81.588097
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Lagrange,GA",
+    "state": "GA",
+    "details": "955 Lafayette Pkwy, Lagrange,GA 30241, (706) 443-7059|Store #2773|Gas",
+    "lat": 33.039493,
+    "lon": -85.023133
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Lawrenceville,GA",
+    "state": "GA",
+    "details": "3059 Lawrenceville Hwy, Lawrenceville,GA 30044, (678) 259-0050|Store #3074|(NOP)",
+    "lat": 33.921685,
+    "lon": -84.085261
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Marietta,GA",
+    "state": "GA",
+    "details": "2909 Austell Rd SW, Marietta,GA 30008, (770) 615-1243|Store #5815|(NOP)",
+    "lat": 33.882334,
+    "lon": -84.587457
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Martinez,GA",
+    "state": "GA",
+    "details": "3851 Evans to Locks Rd, Martinez,GA 30907, (706) 941-5844|Store #5813|(NOP)",
+    "lat": 33.549953,
+    "lon": -82.086896
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Savannah,GA",
+    "state": "GA",
+    "details": "10530 Abercorn St, Savannah,GA 31419, (912) 712-7007|Store #4530|Gas",
+    "lat": 31.93542,
+    "lon": -81.131815
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Snellville,GA",
+    "state": "GA",
+    "details": "2912 W Main St, Snellville,GA 30078, (770) 225-0949|Store #3072|(NOP)",
+    "lat": 33.853101,
+    "lon": -84.033339
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Statesboro,GA",
+    "state": "GA",
+    "details": "349 Brampton Ave, Statesboro,GA 30458, (912) 489-2750|Store #2858|Gas",
+    "lat": 32.40691,
+    "lon": -81.769946
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Tifton,GA",
+    "state": "GA",
+    "details": "1810 N Tift Ave/I-75 Exit 64, Tifton,GA 31794, (229) 339-8484|Store #5198|Gas",
+    "lat": 31.47067,
+    "lon": -83.502632
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Tucker,GA",
+    "state": "GA",
+    "details": "3201 Tucker Norcross Rd, Tucker,GA 30084, (770) 225-6010|Store #3071|(NOP)",
+    "lat": 33.883568,
+    "lon": -84.218819
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Valdosta,GA",
+    "state": "GA",
+    "details": "4196 Bemiss Rd, Valdosta,GA 31601, (229) 588-7578|Store #6732|Gas",
+    "lat": 30.915888,
+    "lon": -83.257012
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Warner Robins,GA",
+    "state": "GA",
+    "details": "3009 Russell Pkwy, Warner Robins,GA 31088, (478) 333-7031|Store #0920|Gas",
+    "lat": 32.580011,
+    "lon": -83.695958
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Warner Robins,GA",
+    "state": "GA",
+    "details": "515 N Houston, Warner Robins,GA 31093, (478) 273-6996|Store #0840|Gas",
+    "lat": 32.626648,
+    "lon": -83.640772
+  },
+  {
+    "name": "Wm Nbrhd Mkt-Waycross,GA",
+    "state": "GA",
+    "details": "1630 Plant Ave, Waycross,GA 31501, (912) 584-6085|Store #4527|Gas",
+    "lat": 31.220592,
+    "lon": -82.34626
+  },
+  {
+    "name": "Wm Pharm/Clinic-Atlanta,GA",
+    "state": "GA",
+    "details": "1030 Delta Blvd/I-85 Exit 73, Atlanta,GA 30354, (404) 305-8881|Store #5010",
+    "lat": 33.657242,
+    "lon": -84.421991
+  },
+  {
+    "name": "Wm Pharm/Clinic-Savannah,GA",
+    "state": "GA",
+    "details": "251 Robert E Miller Rd, Savannah,GA 31408, (912) 966-6304|Store #6592",
+    "lat": 32.126811,
+    "lon": -81.184469
+  }
+];
+
+// Two layers. Only one basemap is displayed at a time.
+const streets = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+});
+const topographic = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    maxZoom: 17,
+    attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'
+});
+const map = L.map('map', {layers: [streets]});
+map.fitBounds([[30.35, -85.65], [35.1, -80.7]]);
+const targets = L.layerGroup().addTo(map);
+const georgiaWalmarts = L.layerGroup().addTo(map);
+
+L.control.layers(
+    {'Street': streets, 'Topographic': topographic},
+    {'Georgia Target (red)': targets, 'Georgia Walmart (blue)': georgiaWalmarts},
+    {collapsed: false}
+).addTo(map);
+
+// Add a marker for every Walmart store.
+walmartStores.forEach(function(store) {
+    L.circleMarker([store.lat, store.lon], {
+        radius: 5, color: 'blue', fillOpacity: 0.7
+    }).bindPopup('<b>' + store.name + '</b><br>State: ' + store.state +
+        '<br>' + store.details + '<br>Latitude: ' + store.lat +
+        '<br>Longitude: ' + store.lon).addTo(georgiaWalmarts);
+});
+
+// Find the nearest Walmart for each Georgia Target.
+let totalDistance = 0;
+let minimumDistance = Infinity;
+let maximumDistance = 0;
+
+targetStores.forEach(function(store) {
+    let nearestStore;
+    let nearestDistance = Infinity;
+    walmartStores.forEach(function(walmart) {
+        const distance = L.latLng(store.lat, store.lon)
+            .distanceTo(L.latLng(walmart.lat, walmart.lon)) / 1000;
+        if (distance < nearestDistance) {
+            nearestDistance = distance;
+            nearestStore = walmart;
+        }
+    });
+    totalDistance += nearestDistance;
+    minimumDistance = Math.min(minimumDistance, nearestDistance);
+    maximumDistance = Math.max(maximumDistance, nearestDistance);
+
+    L.circleMarker([store.lat, store.lon], {
+        radius: 7, color: 'red', fillOpacity: 0.8
+    }).bindPopup('<b>' + store.name + '</b><br>State: ' + store.state +
+        '<br>' + store.details + '<br>Latitude: ' + store.lat +
+        '<br>Longitude: ' + store.lon + '<br><b>Nearest Walmart:</b> ' +
+        nearestStore.name + '<br>' + nearestStore.details +
+        '<br>Straight-line distance: ' + nearestDistance.toFixed(2) + ' km').addTo(targets);
+
+    const row = document.getElementById('results').insertRow();
+    [store.name, nearestStore.name, nearestDistance.toFixed(2)]
+        .forEach(function(value) { row.insertCell().textContent = value; });
+});
+
+document.getElementById('findings').textContent =
+    'For the ' + targetStores.length + ' Georgia Target stores, the average distance to the nearest Walmart is ' +
+    (totalDistance / targetStores.length).toFixed(2) + ' km. Distances range from ' +
+    minimumDistance.toFixed(2) + ' to ' + maximumDistance.toFixed(2) + ' km.';
+</script>
+</body>
+</html>
